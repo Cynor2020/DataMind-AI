@@ -59,6 +59,33 @@ Isse tumhara code main branch pe update ho jayega.
 
 ---
 
+
+In Short
+
+1. Pehli baar:
+
+git clone https://github.com/Cynor2020/DataMind-AI.git
+cd DataMind-AI
+
+
+2. Har roj kaam shuru karne se pehle:
+
+git pull origin main
+
+
+3. Code likho aur commit karo:
+
+git add .
+git commit -m "Updated feature X"
+
+
+4. GitHub pe push karo:
+
+git push origin main
+
+
+
+
 📌 Agar Merge Conflict Aaye To?
 
 Agar git push karte waqt merge conflict error aaye, to pehle repo update karo:

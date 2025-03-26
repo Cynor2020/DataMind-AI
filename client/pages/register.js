@@ -1,15 +1,15 @@
+import styles from '../styles/Register.module.css'; // ✅ Import CSS module
 import RegisterForm from '../components/RegisterForm';
-import '../styles/Register.css'; // Custom CSS file import karo
 
 export default function Register() {
   return (
-    <div className="register-container">
-      <div className="register-card">
-        <h1 className="register-title">Register to DataMind-AI</h1>
+    <div className={styles.registerContainer}>
+      <div className={styles.registerCard}>
+        <h1 className={styles.registerTitle}>Register to DataMind-AI</h1>
         <RegisterForm />
-        <p className="register-login-link">
+        <p className={styles.registerLoginLink}>
           Already have an account?{' '}
-          <a href="/login" className="login-link">
+          <a href="/login" className={styles.loginLink}>
             Login here
           </a>
         </p>

@@ -1,5 +1,5 @@
 import LoginForm from '../components/LoginForm';
-import '../styles/Login.css'; // Custom CSS file import karo
+import styles from '../styles/Register.module.css'; // ✅ Import CSS module
 
 export default function Register() {
   return (

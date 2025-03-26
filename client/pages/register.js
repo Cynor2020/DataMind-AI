@@ -14,6 +14,7 @@ export default function Register() {
           </a>
         </p>
       </div>
+      
     </div>
   );
 }

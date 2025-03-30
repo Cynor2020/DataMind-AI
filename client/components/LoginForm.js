@@ -1,7 +1,9 @@
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/router';
 import { toast } from 'react-toastify';
-import { registerUser } from '../lib/api';
+import axios from 'axios';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 const LoginForm = () => {
   const { register, handleSubmit, formState: { errors } } = useForm();
@@ -9,30 +11,25 @@ const LoginForm = () => {
 
   const onSubmit = async (data) => {
     try {
-      const response = await registerUser(data);
-      toast.success('Registration successful! Redirecting to login...');
-      setTimeout(() => router.push('/login'), 2000);
+      const response = await axios.post(`${API_URL}/login`, data);
+      localStorage.setItem('token', response.data.token);  // Token store karo
+      toast.success('Login successful! Redirecting to dashboard...');
+      setTimeout(() => router.push('/dashboard'), 2000);
     } catch (error) {
-      toast.error(error.message || 'Registration failed. Please try again.');
+      toast.error(error.response?.data?.message || 'Login failed. Please try again.');
     }
   };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="register-form">
-
       <div className="form-group">
-        <label htmlFor="email" className="form-label">
-          Email
-        </label>
+        <label htmlFor="email" className="form-label">Email</label>
         <input
           id="email"
           type="email"
           {...register('email', {
             required: 'Email is required',
-            pattern: {
-              value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-              message: 'Invalid email address',
-            },
+            pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Invalid email address' },
           })}
           className="form-input"
         />
@@ -40,9 +37,7 @@ const LoginForm = () => {
       </div>
 
       <div className="form-group">
-        <label htmlFor="password" className="form-label">
-          Password
-        </label>
+        <label htmlFor="password" className="form-label">Password</label>
         <input
           id="password"
           type="password"
@@ -55,9 +50,7 @@ const LoginForm = () => {
         {errors.password && <p className="form-error">{errors.password.message}</p>}
       </div>
 
-      <button type="submit" className="form-button">
-        Login
-      </button>
+      <button type="submit" className="form-button">Login</button>
     </form>
   );
 };

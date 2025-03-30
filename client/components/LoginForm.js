@@ -22,23 +22,25 @@ const LoginForm = () => {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="login-form">
-      <div>
-        <label>Email:</label>
-        <input
+      <div className="form-group" >
+        <label className="form-label">Email:</label>
+        <input className="form-input"
           type="email"
           {...register('email', { required: 'Email is required' })}
         />
         {errors.email && <p>{errors.email.message}</p>}
+        
       </div>
-      <div>
-        <label>Password:</label>
-        <input
+      <div className="form-group">
+        <label className="form-label">Password:</label>
+        <input className="form-input"
           type="password"
           {...register('password', { required: 'Password is required' })}
         />
         {errors.password && <p>{errors.password.message}</p>}
       </div>
-      <button type="submit">Login</button>
+      <br></br>
+      <button type="submit" className="form-button">Login</button>
     </form>
   );
 };

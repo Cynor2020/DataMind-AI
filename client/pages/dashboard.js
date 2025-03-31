@@ -11,7 +11,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 const Dashboard = () => {
   const [message, setMessage] = useState('');
-  const [username, setUsername] = useState(''); // Add state for username
+  const [username, setUsername] = useState('');
   const [activeComponent, setActiveComponent] = useState('dashboard');
   const router = useRouter();
 
@@ -24,15 +24,23 @@ const Dashboard = () => {
         return;
       }
 
+      // Ensure the token doesn't already have "Bearer"
+      const cleanToken = token.startsWith('Bearer ') ? token.replace('Bearer ', '') : token;
+
       try {
         const response = await axios.get(`${API_URL}/dashboard`, {
-          headers: { Authorization: token },
+          headers: { Authorization: `Bearer ${cleanToken}` },
         });
         setMessage(response.data.message);
-        setUsername(response.data.username); // Store the username from the response
+        setUsername(response.data.username);
       } catch (error) {
-        toast.error(error.response?.data?.message || 'Failed to load dashboard');
-        router.push('/login');
+        console.error('Dashboard error:', error.response?.data);
+        const errorMessage = error.response?.data?.message || 'Failed to load dashboard';
+        toast.error(errorMessage);
+        if (errorMessage === 'Token is missing' || errorMessage === 'Invalid token' || errorMessage === 'Token has expired') {
+          localStorage.removeItem('token');
+          router.push('/login');
+        }
       }
     };
 
@@ -41,14 +49,14 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-container">
-      <Header username={username} /> {/* Pass username to Header */}
+      <Header username={username} />
       <div className="dashboard-content">
         <Sidebar setActiveComponent={setActiveComponent} />
         <main className="dashboard-main">
           <h1>Dashboard</h1>
           {activeComponent === 'dashboard' && <p>Welcome to Dashboard</p>}
-          {activeComponent === 'upload' && <FilesUpload />}
           {activeComponent === 'history' && <FilesHistory />}
+          {activeComponent === 'upload' && <FilesUpload />}
           <p>{message || 'Loading...'}</p>
         </main>
       </div>

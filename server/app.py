@@ -125,11 +125,17 @@ def dashboard():
 def upload_file():
     token = request.headers.get('Authorization')
     if not token:
+        print("No Authorization header provided")
         return jsonify({'message': 'Token is missing'}), 401
 
     try:
+        print(f"Received Authorization header: {token}")
+        token = token.split()[1]
+        print(f"Extracted token: {token}")
+        
         data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
         email = data['email']
+        print(f"Decoded email: {email}")
 
         if 'file' not in request.files:
             return jsonify({'message': 'No file part'}), 400
@@ -155,8 +161,15 @@ def upload_file():
         files_collection.insert_one(file_doc)
 
         return jsonify({'message': 'File uploaded successfully'}), 201
-    except jwt.InvalidTokenError:
+    except jwt.ExpiredSignatureError:
+        print("Token has expired")
+        return jsonify({'message': 'Token has expired'}), 401
+    except jwt.InvalidTokenError as e:
+        print(f"Invalid token error: {str(e)}")
         return jsonify({'message': 'Invalid token'}), 401
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}")
+        return jsonify({'message': f'Error: {str(e)}'}), 500
 
 
 

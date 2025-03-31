@@ -10,20 +10,21 @@ from bson.objectid import ObjectId
 
 app = Flask(__name__)
 bcrypt = Bcrypt(app)
-CORS(app)
+CORS(app, supports_credentials=True, origins=['http://localhost:3000'])  # Updated CORS for Next.js
 
 # MongoDB connection
 client = MongoClient('mongodb://localhost:27017/')
 db = client['datamind']
 users_collection = db['users']
 files_collection = db['user_files']
+
 # Secret Key for JWT (Store this in env variables in production)
 SECRET_KEY = 'your-secret-key'
 ALLOWED_EXTENSIONS = {'csv', 'txt', 'pdf'}
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# Register route
 # Register route
 @app.route('/register', methods=['POST'])
 def register():
@@ -31,7 +32,7 @@ def register():
         data = request.get_json()
         email = data.get('email')
         password = data.get('password')
-        username = data.get('username')  # Add username field
+        username = data.get('username')
 
         if not email or not password or not username:
             return jsonify({'message': 'Email, Password, and Username are required'}), 400
@@ -43,14 +44,11 @@ def register():
         users_collection.insert_one({
             'email': email,
             'password': hashed_password,
-            'username': username  # Store username in the database
+            'username': username
         })
-
         return jsonify({'message': 'User registered successfully'}), 201
     except Exception as e:
         return jsonify({'message': f'Error: {str(e)}'}), 500
-
-
 
 # Login route
 @app.route('/login', methods=['POST'])
@@ -60,31 +58,21 @@ def login():
         email = data.get('email')
         password = data.get('password')
 
-        # Validate user credentials
         user = users_collection.find_one({'email': email})
         if not user or not bcrypt.check_password_hash(user['password'], password):
             return jsonify({'message': 'Invalid credentials'}), 401
 
-        # Generate JWT token
-        try:
-            token = jwt.encode(
-                {
-                    'email': email,
-                    'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=24)
-                },
-                SECRET_KEY,
-                algorithm='HS256'
-            )
-            token = token if isinstance(token, str) else token.decode('utf-8')  # Ensure token is string
-        except Exception as e:
-            return jsonify({'message': f'Error generating token: {str(e)}'}), 500
-
+        token = jwt.encode(
+            {'email': email, 'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=24)},
+            SECRET_KEY,
+            algorithm='HS256'
+        )
+        token = token if isinstance(token, str) else token.decode('utf-8')
         return jsonify({'token': token, 'message': 'Login successful'}), 200
     except Exception as e:
         return jsonify({'message': f'Unexpected error: {str(e)}'}), 500
 
-# Protected dashboard route
-# Protected dashboard route
+# Dashboard route
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
     try:
@@ -93,19 +81,16 @@ def dashboard():
             return jsonify({'message': 'Token is missing'}), 401
 
         token = token.split()[1]
-        
         data = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
         email = data['email']
         user = users_collection.find_one({'email': email})
-        
-        
 
         if not user:
             return jsonify({'message': 'User not found'}), 404
 
         return jsonify({
-            'username': user.get('username', 'User'),  # Return username, default to 'User' if not found
-            
+            'username': user.get('username', 'User'),
+            'message': 'Welcome to your dashboard'
         }), 200
     except jwt.ExpiredSignatureError:
         return jsonify({'message': 'Token has expired'}), 401
@@ -114,13 +99,7 @@ def dashboard():
     except Exception as e:
         return jsonify({'message': f'Error: {str(e)}'}), 500
 
-
-
-
-
-
-
-
+# File upload route
 @app.route('/upload', methods=['POST'])
 def upload_file():
     token = request.headers.get('Authorization')
@@ -129,13 +108,9 @@ def upload_file():
         return jsonify({'message': 'Token is missing'}), 401
 
     try:
-        print(f"Received Authorization header: {token}")
         token = token.split()[1]
-        print(f"Extracted token: {token}")
-        
         data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
         email = data['email']
-        print(f"Decoded email: {email}")
 
         if 'file' not in request.files:
             return jsonify({'message': 'No file part'}), 400
@@ -162,18 +137,37 @@ def upload_file():
 
         return jsonify({'message': 'File uploaded successfully'}), 201
     except jwt.ExpiredSignatureError:
-        print("Token has expired")
         return jsonify({'message': 'Token has expired'}), 401
     except jwt.InvalidTokenError as e:
-        print(f"Invalid token error: {str(e)}")
         return jsonify({'message': 'Invalid token'}), 401
     except Exception as e:
-        print(f"Unexpected error: {str(e)}")
         return jsonify({'message': f'Error: {str(e)}'}), 500
 
+# New route to fetch file history
+@app.route('/files-history', methods=['GET'])
+def files_history():
+    try:
+        token = request.headers.get('Authorization')
+        if not token:
+            return jsonify({'message': 'Token is missing'}), 401
 
+        token = token.split()[1]
+        data = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        email = data['email']
 
+        # Fetch files uploaded by this user
+        files = list(files_collection.find({'email': email}, {'data': 0}))  # Exclude binary data for now
+        for file in files:
+            file['_id'] = str(file['_id'])  # Convert ObjectId to string
+            file['upload_date'] = file['upload_date'].isoformat()  # Convert datetime to ISO string
 
+        return jsonify({'files': files, 'message': 'File history retrieved successfully'}), 200
+    except jwt.ExpiredSignatureError:
+        return jsonify({'message': 'Token has expired'}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({'message': 'Invalid token'}), 401
+    except Exception as e:
+        return jsonify({'message': f'Error: {str(e)}'}), 500
 
 if __name__ == '__main__':
-    app.run(debug=False)  # Disable auto-reload by setting debug=False
+    app.run(debug=False)

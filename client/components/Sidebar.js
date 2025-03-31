@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 
-const Sidebar = () => {
+const Sidebar = ({ setActiveComponent }) => {  // Receive setActiveComponent
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -17,11 +16,10 @@ const Sidebar = () => {
       <div className="sidebar-content">
         <div className="menu-title">Main Menu</div>
         <nav className="menu-nav">
-        <Link href="/"><span className="menu-item">Home</span></Link>
-        <Link href="/about"><span className="menu-item">Upload CSV</span></Link>
-        <Link href="/contact"><span className="menu-item">History</span></Link>
+          <span className="menu-item" onClick={() => setActiveComponent('dashboard')}>Home</span>
+          <span className="menu-item" onClick={() => setActiveComponent('upload')}>Upload CSV</span>
+          <span className="menu-item" onClick={() => setActiveComponent('history')}>History</span>
         </nav>
-
       </div>
     </aside>
   );

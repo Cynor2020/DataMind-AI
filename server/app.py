@@ -1,9 +1,12 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from pymongo import MongoClient
 from flask_bcrypt import Bcrypt
 from flask_cors import CORS
 import jwt
 import datetime
+import io
+from werkzeug.utils import secure_filename
+from bson.objectid import ObjectId
 
 app = Flask(__name__)
 bcrypt = Bcrypt(app)
@@ -13,8 +16,12 @@ CORS(app)
 client = MongoClient('mongodb://localhost:27017/')
 db = client['datamind']
 users_collection = db['users']
+files_collection = db['user_files']
 # Secret Key for JWT (Store this in env variables in production)
 SECRET_KEY = 'your-secret-key'
+ALLOWED_EXTENSIONS = {'csv', 'txt', 'pdf'}
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # Register route
 # Register route
@@ -106,6 +113,53 @@ def dashboard():
         return jsonify({'message': 'Invalid token'}), 401
     except Exception as e:
         return jsonify({'message': f'Error: {str(e)}'}), 500
+
+
+
+
+
+
+
+
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    token = request.headers.get('Authorization')
+    if not token:
+        return jsonify({'message': 'Token is missing'}), 401
+
+    try:
+        data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        email = data['email']
+
+        if 'file' not in request.files:
+            return jsonify({'message': 'No file part'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'message': 'No selected file'}), 400
+
+        if not allowed_file(file.filename):
+            return jsonify({'message': 'File type not allowed. Only CSV, TXT, PDF permitted'}), 400
+
+        filename = secure_filename(file.filename)
+        file_data = file.read()
+        filetype = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'unknown'
+
+        file_doc = {
+            'email': email,
+            'filename': filename,
+            'data': file_data,
+            'filetype': filetype,
+            'upload_date': datetime.datetime.utcnow()
+        }
+        files_collection.insert_one(file_doc)
+
+        return jsonify({'message': 'File uploaded successfully'}), 201
+    except jwt.InvalidTokenError:
+        return jsonify({'message': 'Invalid token'}), 401
+
+
+
 
 
 if __name__ == '__main__':

@@ -327,3 +327,48 @@ body {
     min-height: 100vh;
   }
    
+
+
+
+
+  
+
+
+
+
+
+
+  .file-upload-container {
+    padding: 20px;
+  }
+  
+  .file-input {
+    margin-bottom: 15px;
+  }
+  
+  .file-input label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+  }
+  
+  .file-input input {
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  
+  button {
+    padding: 10px 20px;
+    background-color: #0070f3;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+  }  
+  

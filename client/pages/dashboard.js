@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import FilesHistory from '../components/Files_history';
+import FilesUpload from '../components/Files_upload';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -46,6 +47,7 @@ const Dashboard = () => {
         <main className="dashboard-main">
           <h1>Dashboard</h1>
           {activeComponent === 'dashboard' && <p>Welcome to Dashboard</p>}
+          {activeComponent === 'upload' && <FilesUpload />}
           {activeComponent === 'history' && <FilesHistory />}
           <p>{message || 'Loading...'}</p>
         </main>

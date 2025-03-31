@@ -10,7 +10,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 const Dashboard = () => {
   const [message, setMessage] = useState('');
-  const [activeComponent, setActiveComponent] = useState('dashboard'); // 🔥 Define activeComponent state
+  const [username, setUsername] = useState(''); // Add state for username
+  const [activeComponent, setActiveComponent] = useState('dashboard');
   const router = useRouter();
 
   useEffect(() => {
@@ -27,6 +28,7 @@ const Dashboard = () => {
           headers: { Authorization: token },
         });
         setMessage(response.data.message);
+        setUsername(response.data.username); // Store the username from the response
       } catch (error) {
         toast.error(error.response?.data?.message || 'Failed to load dashboard');
         router.push('/login');
@@ -38,13 +40,13 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-container">
-      <Header />
+      <Header username={username} /> {/* Pass username to Header */}
       <div className="dashboard-content">
-        <Sidebar setActiveComponent={setActiveComponent} />  {/* 🔥 Pass setActiveComponent */}
+        <Sidebar setActiveComponent={setActiveComponent} />
         <main className="dashboard-main">
           <h1>Dashboard</h1>
           {activeComponent === 'dashboard' && <p>Welcome to Dashboard</p>}
-          {activeComponent === 'history' && <FilesHistory />}  {/* 🔥 Render History Component */}
+          {activeComponent === 'history' && <FilesHistory />}
           <p>{message || 'Loading...'}</p>
         </main>
       </div>

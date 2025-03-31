@@ -10,7 +10,7 @@ from bson.objectid import ObjectId
 
 app = Flask(__name__)
 bcrypt = Bcrypt(app)
-CORS(app, supports_credentials=True, origins=['http://localhost:3000'])  # Updated CORS for Next.js
+CORS(app, supports_credentials=True, origins=['http://localhost:3000'])
 
 # MongoDB connection
 client = MongoClient('mongodb://localhost:27017/')
@@ -143,7 +143,7 @@ def upload_file():
     except Exception as e:
         return jsonify({'message': f'Error: {str(e)}'}), 500
 
-# New route to fetch file history
+# Files history route
 @app.route('/files-history', methods=['GET'])
 def files_history():
     try:
@@ -155,13 +155,44 @@ def files_history():
         data = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
         email = data['email']
 
-        # Fetch files uploaded by this user
-        files = list(files_collection.find({'email': email}, {'data': 0}))  # Exclude binary data for now
+        files = list(files_collection.find({'email': email}, {'data': 0}))
         for file in files:
-            file['_id'] = str(file['_id'])  # Convert ObjectId to string
-            file['upload_date'] = file['upload_date'].isoformat()  # Convert datetime to ISO string
+            file['_id'] = str(file['_id'])
+            file['upload_date'] = file['upload_date'].isoformat()
 
         return jsonify({'files': files, 'message': 'File history retrieved successfully'}), 200
+    except jwt.ExpiredSignatureError:
+        return jsonify({'message': 'Token has expired'}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({'message': 'Invalid token'}), 401
+    except Exception as e:
+        return jsonify({'message': f'Error: {str(e)}'}), 500
+
+# New download route
+@app.route('/download/<file_id>', methods=['GET'])
+def download_file(file_id):
+    try:
+        token = request.headers.get('Authorization')
+        if not token:
+            return jsonify({'message': 'Token is missing'}), 401
+
+        token = token.split()[1]
+        data = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        email = data['email']
+
+        # Fetch file from MongoDB
+        file_doc = files_collection.find_one({'_id': ObjectId(file_id), 'email': email})
+        if not file_doc:
+            return jsonify({'message': 'File not found or you do not have access'}), 404
+
+        # Serve the file
+        file_data = io.BytesIO(file_doc['data'])
+        return send_file(
+            file_data,
+            as_attachment=True,
+            download_name=file_doc['filename'],
+            mimetype='application/octet-stream'  # Adjust MIME type based on filetype if needed
+        )
     except jwt.ExpiredSignatureError:
         return jsonify({'message': 'Token has expired'}), 401
     except jwt.InvalidTokenError:

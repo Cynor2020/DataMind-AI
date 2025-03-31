@@ -180,25 +180,28 @@ def download_file(file_id):
         data = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
         email = data['email']
 
-        # Fetch file from MongoDB
         file_doc = files_collection.find_one({'_id': ObjectId(file_id), 'email': email})
         if not file_doc:
             return jsonify({'message': 'File not found or you do not have access'}), 404
 
-        # Serve the file
         file_data = io.BytesIO(file_doc['data'])
-        return send_file(
+        response = send_file(
             file_data,
             as_attachment=True,
             download_name=file_doc['filename'],
-            mimetype='application/octet-stream'  # Adjust MIME type based on filetype if needed
+            mimetype={'csv': 'text/csv', 'txt': 'text/plain', 'pdf': 'application/pdf'}.get(file_doc['filetype'], 'application/octet-stream')
         )
+        # Add CORS headers manually
+        response.headers['Access-Control-Allow-Origin'] = 'http://localhost:3000'
+        response.headers['Access-Control-Allow-Headers'] = 'Authorization, Content-Type'
+        return response
     except jwt.ExpiredSignatureError:
         return jsonify({'message': 'Token has expired'}), 401
     except jwt.InvalidTokenError:
         return jsonify({'message': 'Invalid token'}), 401
     except Exception as e:
         return jsonify({'message': f'Error: {str(e)}'}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=False)

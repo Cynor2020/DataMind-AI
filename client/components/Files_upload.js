@@ -2,7 +2,6 @@ import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import { toast } from 'react-toastify';
-
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 const FilesUpload = () => {
@@ -10,6 +9,7 @@ const FilesUpload = () => {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
   const router = useRouter();
+  
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -77,7 +77,7 @@ const FilesUpload = () => {
   return (
     <div className="file-upload-container">
       <h1>File Upload Page</h1>
-      <p>Bhai yeh hamara Upload Page aa chuka hai</p>
+      
 
       <form onSubmit={handleUpload}>
         <div className="file-input">
@@ -94,6 +94,7 @@ const FilesUpload = () => {
         <button type="submit" disabled={uploading}>
           {uploading ? 'Uploading...' : 'Upload File'}
         </button>
+        
       </form>
     </div>
   );

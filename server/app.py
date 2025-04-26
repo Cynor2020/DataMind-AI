@@ -7,6 +7,9 @@ import datetime
 import io
 from werkzeug.utils import secure_filename
 from bson.objectid import ObjectId
+import tempfile
+import os 
+from data_mind_ai_analysis_model import analyze_csv_with_ai
 
 app = Flask(__name__)
 bcrypt = Bcrypt(app)
@@ -17,6 +20,7 @@ client = MongoClient('mongodb://localhost:27017/')
 db = client['datamind']
 users_collection = db['users']
 files_collection = db['user_files']
+analysis_collection = db['analysis_results']
 
 # Secret Key for JWT (Store this in env variables in production)
 SECRET_KEY = 'your-secret-key'
@@ -25,7 +29,7 @@ ALLOWED_EXTENSIONS = {'csv', 'txt', 'pdf'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# Register route
+# Register route (unchanged)
 @app.route('/register', methods=['POST'])
 def register():
     try:
@@ -50,7 +54,7 @@ def register():
     except Exception as e:
         return jsonify({'message': f'Error: {str(e)}'}), 500
 
-# Login route
+# Login route (unchanged)
 @app.route('/login', methods=['POST'])
 def login():
     try:
@@ -72,7 +76,7 @@ def login():
     except Exception as e:
         return jsonify({'message': f'Unexpected error: {str(e)}'}), 500
 
-# Dashboard route
+# Dashboard route (unchanged)
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
     try:
@@ -99,7 +103,7 @@ def dashboard():
     except Exception as e:
         return jsonify({'message': f'Error: {str(e)}'}), 500
 
-# File upload route
+# File upload route (unchanged)
 @app.route('/upload', methods=['POST'])
 def upload_file():
     token = request.headers.get('Authorization')
@@ -143,7 +147,7 @@ def upload_file():
     except Exception as e:
         return jsonify({'message': f'Error: {str(e)}'}), 500
 
-# Files history route
+# Files history route (unchanged)
 @app.route('/files-history', methods=['GET'])
 def files_history():
     try:
@@ -168,7 +172,33 @@ def files_history():
     except Exception as e:
         return jsonify({'message': f'Error: {str(e)}'}), 500
 
-# New download route
+
+@app.route('/current_files', methods=['GET'])
+def current_files():
+    try:
+        token = request.headers.get('Authorization')
+        if not token:
+            return jsonify({'message': 'Token is missing'}), 401
+
+        token = token.split()[1]
+        data = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        email = data['email']
+
+        # Fetch only the latest file, sorted by upload_date (descending)
+        files = list(files_collection.find({'email': email}, {'data': 0}).sort('upload_date', -1).limit(1))
+        for file in files:
+            file['_id'] = str(file['_id'])
+            file['upload_date'] = file['upload_date'].isoformat()
+
+        return jsonify({'files': files, 'message': 'File history retrieved successfully'}), 200
+    except jwt.ExpiredSignatureError:
+        return jsonify({'message': 'Token has expired'}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({'message': 'Invalid token'}), 401
+    except Exception as e:
+        return jsonify({'message': f'Error: {str(e)}'}), 500
+
+# Download route (unchanged)
 @app.route('/download/<file_id>', methods=['GET'])
 def download_file(file_id):
     try:
@@ -191,7 +221,6 @@ def download_file(file_id):
             download_name=file_doc['filename'],
             mimetype={'csv': 'text/csv', 'txt': 'text/plain', 'pdf': 'application/pdf'}.get(file_doc['filetype'], 'application/octet-stream')
         )
-        # Add CORS headers manually
         response.headers['Access-Control-Allow-Origin'] = 'http://localhost:3000'
         response.headers['Access-Control-Allow-Headers'] = 'Authorization, Content-Type'
         return response
@@ -202,6 +231,65 @@ def download_file(file_id):
     except Exception as e:
         return jsonify({'message': f'Error: {str(e)}'}), 500
 
+# Analyze route (updated)
+@app.route('/analyze/<file_id>', methods=['GET'])
+def analyze_file(file_id):
+    try:
+        token = request.headers.get('Authorization')
+        if not token:
+            return jsonify({'message': 'Token is missing'}), 401
+
+        token = token.split()[1]
+        data = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        email = data['email']
+
+        file_doc = files_collection.find_one({'_id': ObjectId(file_id), 'email': email})
+        if not file_doc:
+            return jsonify({'message': 'File not found or you do not have access'}), 404
+
+        if file_doc['filetype'] != 'csv':
+            return jsonify({'message': 'Only CSV files can be analyzed'}), 400
+
+        with tempfile.NamedTemporaryFile(suffix='.csv', delete=False) as temp_file:
+            temp_file.write(file_doc['data'])
+            temp_csv_path = temp_file.name
+
+        results = analyze_csv_with_ai(temp_csv_path)
+        os.remove(temp_csv_path)
+
+        if 'error' in results:
+            return jsonify({'message': results['error']}), 400
+
+        analysis_doc = {
+            'file_id': file_id,
+            'email': email,
+            'insights': results['insights'],
+            'predictions': results['predictions'],
+            'plots': results['plots'],
+            'created_at': datetime.datetime.utcnow()
+        }
+        analysis_result = analysis_collection.insert_one(analysis_doc)
+        analysis_id = str(analysis_result.inserted_id)
+
+        # Convert plot data to base64 image URLs
+        results['plots'] = [f"data:image/png;base64,{plot['data']}" for plot in results['plots']]
+
+        return jsonify({
+            'message': 'Analysis completed successfully',
+            'results': results,
+            'analysis_id': analysis_id
+        }), 200
+
+    except Exception as e:
+        return jsonify({'message': f'Error: {str(e)}'}), 500
+
+# CORS middleware (unchanged)
+@app.after_request
+def add_cors_headers(response):
+    response.headers['Access-Control-Allow-Origin'] = 'http://localhost:3000'
+    response.headers['Access-Control-Allow-Headers'] = 'Authorization, Content-Type'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+    return response
 
 if __name__ == '__main__':
     app.run(debug=False)

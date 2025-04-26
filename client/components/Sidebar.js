@@ -19,6 +19,7 @@ const Sidebar = ({ setActiveComponent }) => {  // Receive setActiveComponent
           <span className="menu-item" onClick={() => setActiveComponent('dashboard')}>Home</span>
           <span className="menu-item" onClick={() => setActiveComponent('upload')}>Upload CSV</span>
           <span className="menu-item" onClick={() => setActiveComponent('history')}>History</span>
+          <span className="menu-item" onClick={() => setActiveComponent('results')}>Analyze</span>
         </nav>
       </div>
     </aside>

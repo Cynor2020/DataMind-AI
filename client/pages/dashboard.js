@@ -6,7 +6,7 @@ import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import FilesHistory from '../components/Files_history';
 import FilesUpload from '../components/Files_upload';
-
+import AnalyzeResults from '../components/AnalyzeResults';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 const Dashboard = () => {
@@ -57,6 +57,7 @@ const Dashboard = () => {
           {activeComponent === 'dashboard' && <p>Welcome to Dashboard</p>}
           {activeComponent === 'history' && <FilesHistory />}
           {activeComponent === 'upload' && <FilesUpload />}
+          {activeComponent === 'results' && <AnalyzeResults />}
           <p>{message || 'Loading...'}</p>
         </main>
       </div>

@@ -19,7 +19,7 @@ body {
     justify-content: center;
     align-items: center;
     height: 100vh;
-    width: 100vw; /* Yeh update kar diya */
+    width: 100vw;
     margin: 0;
     overflow: hidden;
 }
@@ -56,7 +56,6 @@ body {
     align-items: center;
     justify-content: center;
 }
-
 
 /* Title */
 .register-title {
@@ -156,61 +155,56 @@ body {
     }
 }
 
-
-
-
-
-  
-  /* Header Styles */
-  .header {
+/* Header Styles */
+.header {
     width: 100vw;
     max-width: 100%;
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 1rem 2rem;
-    background-color: #1e1e2f; /* Dark background */
+    background-color: #1e1e2f;
     color: white;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  }
-  
-  .logo {
+}
+
+.logo {
     margin-left: 25px;
     font-size: 1.5rem;
     font-weight: bold;
     color: #ffffff;
-  }
-  
-  .nav-menu {
+}
+
+.nav-menu {
     display: flex;
     gap: 1.5rem;
-  }
-  
-  .nav-menu a {
+}
+
+.nav-menu a {
     text-decoration: none;
     color: #ffffff;
     font-weight: 500;
     transition: color 0.3s ease;
-  }
-  
-  .nav-menu a:hover {
-    color: #ff6347; /* Tomato color for hover effect */
-  }
-  
-  .search-bar input {
+}
+
+.nav-menu a:hover {
+    color: #ff6347;
+}
+
+.search-bar input {
     padding: 0.5rem;
     border: 1px solid #ddd;
     border-radius: 4px;
     width: 200px;
     transition: border-color 0.3s ease;
-  }
-  
-  .search-bar input:focus {
-    border-color: #ff6347; /* Tomato color on focus */
+}
+
+.search-bar input:focus {
+    border-color: #ff6347;
     outline: none;
-  }
-  
-  .login-btn {
+}
+
+.login-btn {
     padding: 0.5rem 1rem;
     background-color: #007bff;
     color: white;
@@ -219,44 +213,36 @@ body {
     border-radius: 4px;
     cursor: pointer;
     transition: background-color 0.3s ease;
-  }
-  
-  .login-btn:hover {
-    background-color: #0056b3; /* Darker blue on hover */
-  }
-  
-  /* Responsive Design */
-  @media (max-width: 768px) {
+}
+
+.login-btn:hover {
+    background-color: #0056b3;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
     .header {
-      flex-direction: column;
-      align-items: flex-start;
+        flex-direction: column;
+        align-items: flex-start;
     }
-  
+
     .nav-menu {
-      flex-direction: column;
-      gap: 1rem;
-      margin-top: 1rem;
+        flex-direction: column;
+        gap: 1rem;
+        margin-top: 1rem;
     }
-  
+
     .search-bar {
-      margin-top: 1rem;
+        margin-top: 1rem;
     }
-  
+
     .login-btn {
-      margin-top: 1rem;
+        margin-top: 1rem;
     }
-  }
+}
 
-
-
-
-
-
-
-
-
-  /* Sidebar Global Styles */
-  .sidebar {
+/* Sidebar Global Styles */
+.sidebar {
     position: fixed;
     left: -250px;
     top: 0;
@@ -267,13 +253,13 @@ body {
     padding: 1rem;
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
     z-index: 1000;
-  }
-  
-  .sidebar-open {
+}
+
+.sidebar-open {
     left: 0;
-  }
-  
-  .menu-toggle {
+}
+
+.menu-toggle {
     position: absolute;
     top: 10px;
     right: -50px;
@@ -283,93 +269,249 @@ body {
     padding: 10px;
     cursor: pointer;
     border-radius: 5px;
-  }
-  
-  .menu-title {
+}
+
+.menu-title {
     font-size: 1.2rem;
     color: white;
     margin-bottom: 1rem;
-  }
-  
-  .menu-nav {
+}
+
+.menu-nav {
     display: flex;
     flex-direction: column;
     gap: 1rem;
-  }
-  
-  .menu-item {
+}
+
+.menu-item {
     color: white;
     text-decoration: none;
     font-size: 1rem;
     padding: 10px;
     border-radius: 5px;
     transition: background 0.3s ease-in-out;
-  }
-  
-  .menu-item:hover {
+}
+
+.menu-item:hover {
     background: #ff6347;
-  }
-  
-  .dashboard-container {
+}
+
+.dashboard-container {
     display: flex;
     flex-direction: column;
     height: 100vh;
     overflow-y: auto;
-  }
-  
-  .dashboard-content {
+}
+
+.dashboard-content {
     display: flex;
     flex: 1;
-  }
-  
-  .dashboard-main {
+}
+
+.dashboard-main {
     flex: 1;
     padding: 2rem;
     min-height: 100vh;
-  }
-   
+}
 
-
-
-
-  
-
-
-
-
-
-
-  .file-upload-container {
+/* File Upload Container */
+.file-upload-container {
     padding: 20px;
-  }
-  
-  .file-input {
+}
+
+.file-input {
     margin-bottom: 15px;
-  }
-  
-  .file-input label {
+}
+
+.file-input label {
     display: block;
     margin-bottom: 5px;
     font-weight: bold;
-  }
-  
-  .file-input input {
+}
+
+.file-input input {
     padding: 5px;
     border: 1px solid #ccc;
     border-radius: 4px;
-  }
-  
-  button {
+}
+
+button {
     padding: 10px 20px;
     background-color: #0070f3;
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
-  }
-  
-  button:disabled {
+}
+
+button:disabled {
     background-color: #cccccc;
     cursor: not-allowed;
-  }  
-  
+}
+
+/* Home Page Styles */
+.home-container {
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: var(--primary-bg); /* Consistent background */
+    overflow-y: auto;
+    position: relative;
+}
+
+/* Hero Section */
+.hero-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    background: var(--primary-bg); /* Match body background */
+    color: var(--text-color);
+    text-align: center;
+    padding: 40px 20px;
+    border-radius: 12px;
+    margin-bottom: 40px;
+    animation: fadeIn 1s ease-in;
+    width: 100%;
+    max-width: 800px;
+    opacity: 1;
+    visibility: visible;
+}
+
+.hero-section h1 {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 15px;
+    letter-spacing: -0.025em;
+}
+
+.hero-section p {
+    font-size: 1.25rem;
+    max-width: 700px;
+    margin-bottom: 25px;
+    opacity: 0.9;
+}
+
+.get-started-btn {
+    padding: 12px 30px;
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    font-size: 1.1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.get-started-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px var(--btn-glow);
+}
+
+/* Features Section */
+.features-section {
+    max-width: 1200px;
+    margin: 0 auto 40px;
+    text-align: center;
+    padding: 20px;
+}
+
+.features-section h2 {
+    font-size: 2.25rem;
+    font-weight: 600;
+    margin-bottom: 30px;
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 25px;
+}
+
+.feature-item {
+    background-color: var(--card-bg);
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px var(--btn-glow);
+    transition: transform 0.3s;
+}
+
+.feature-item:hover {
+    transform: translateY(-5px);
+}
+
+.feature-item h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.feature-item p {
+    font-size: 1rem;
+    color: var(--text-color);
+}
+
+/* CTA Section */
+.cta-section {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 40px 20px;
+    text-align: center;
+    background-color: var(--card-bg);
+    border-radius: 12px;
+    animation: slideUp 0.8s ease-out;
+}
+
+.cta-section h2 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+.cta-section p {
+    font-size: 1.1rem;
+    margin-bottom: 20px;
+    color: var(--text-color);
+}
+
+/* Animations */
+@keyframes fadeIn {
+    0% { opacity: 0; transform: translateY(-20px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive Design for Home Page */
+@media (max-width: 768px) {
+    .hero-section h1 {
+        font-size: 2.25rem;
+    }
+
+    .hero-section p {
+        font-size: 1.1rem;
+    }
+
+    .features-section h2 {
+        font-size: 1.75rem;
+    }
+
+    .feature-item {
+        padding: 20px;
+    }
+}

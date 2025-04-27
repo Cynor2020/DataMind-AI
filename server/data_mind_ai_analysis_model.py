@@ -8,21 +8,25 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 import io
 import base64
+from io import StringIO
 import warnings
 warnings.filterwarnings('ignore')
 
-def analyze_csv_with_ai(csv_file_path):
+def analyze_csv_with_ai(csv_data):
     """
-    Analyzes a CSV file with AI-driven insights and returns plots as base64 strings.
+    Analyzes a CSV data string with AI-driven insights and returns plots as base64 strings.
     Args:
-        csv_file_path: Path to the CSV file.
+        csv_data: Raw CSV data as a string.
     Returns:
         Dict with insights, predictions, and plot data as base64 strings.
     """
-    # Read CSV
+    # Read CSV from string using StringIO
     try:
-        df = pd.read_csv(csv_file_path)
+        print("Reading CSV data into DataFrame...")
+        df = pd.read_csv(StringIO(csv_data))
+        print("DataFrame Head:", df.head().to_string())
     except Exception as e:
+        print("Error reading CSV:", str(e))
         return {"error": f"Error reading CSV: {str(e)}"}
 
     # Initialize results dictionary
@@ -33,6 +37,7 @@ def analyze_csv_with_ai(csv_file_path):
     }
 
     # Basic Insights
+    print("Computing basic insights...")
     results["insights"]["shape"] = {"rows": df.shape[0], "columns": df.shape[1]}
     results["insights"]["columns"] = list(df.columns)
     results["insights"]["missing_values"] = df.isnull().sum().to_dict()
@@ -44,6 +49,7 @@ def analyze_csv_with_ai(csv_file_path):
 
     # Statistical Insights for Numerical Columns
     if len(numerical_cols) > 0:
+        print("Computing numerical stats...")
         stats = df[numerical_cols].describe()
         results["insights"]["numerical_stats"] = stats.to_dict()
         results["insights"]["skewness"] = df[numerical_cols].skew().to_dict()
@@ -51,6 +57,7 @@ def analyze_csv_with_ai(csv_file_path):
 
     # Categorical Insights
     if len(categorical_cols) > 0:
+        print("Computing categorical insights...")
         results["insights"]["categorical_unique"] = {
             col: df[col].nunique() for col in categorical_cols
         }
@@ -60,6 +67,7 @@ def analyze_csv_with_ai(csv_file_path):
 
     # AI-Driven Predictions (Linear Regression for Numerical Data)
     if len(numerical_cols) >= 2:
+        print("Running linear regression...")
         target_col = numerical_cols[0]
         feature_cols = numerical_cols[1:]
         df_clean = df[[target_col] + list(feature_cols)].dropna()
@@ -79,6 +87,7 @@ def analyze_csv_with_ai(csv_file_path):
             results["predictions"]["sample_predictions"] = list(zip(y_test[:5].values, y_pred[:5]))
 
     # Encode Categorical Columns for Correlation Analysis
+    print("Encoding categorical columns...")
     df_encoded = df.copy()
     le = LabelEncoder()
     for col in categorical_cols:
@@ -86,6 +95,7 @@ def analyze_csv_with_ai(csv_file_path):
     
     # Correlation Analysis
     if len(numerical_cols) > 0 or len(categorical_cols) > 0:
+        print("Computing correlation matrix...")
         corr_matrix = df_encoded.corr()
         results["insights"]["correlation"] = corr_matrix.to_dict()
 
@@ -94,6 +104,7 @@ def analyze_csv_with_ai(csv_file_path):
 
     # 1. Histogram for Numerical Columns
     for col in numerical_cols:
+        print(f"Generating histogram for {col}...")
         plt.figure(figsize=(8, 6))
         plt.hist(df[col].dropna(), bins=20, color='skyblue', edgecolor='black')
         plt.title(f'Histogram of {col}')
@@ -111,6 +122,7 @@ def analyze_csv_with_ai(csv_file_path):
 
     # 2. Box Plot for Numerical Columns
     if len(numerical_cols) > 0:
+        print("Generating box plot...")
         plt.figure(figsize=(10, 6))
         df[numerical_cols].boxplot()
         plt.title('Box Plot of Numerical Columns')
@@ -127,6 +139,7 @@ def analyze_csv_with_ai(csv_file_path):
 
     # 3. Bar Plot for Categorical Columns (Top 5 Values)
     for col in categorical_cols:
+        print(f"Generating bar plot for {col}...")
         plt.figure(figsize=(8, 6))
         value_counts = df[col].value_counts().head(5)
         plt.bar(value_counts.index, value_counts.values, color='lightgreen', edgecolor='black')
@@ -146,6 +159,7 @@ def analyze_csv_with_ai(csv_file_path):
 
     # 4. Correlation Heatmap
     if len(numerical_cols) > 0 or len(categorical_cols) > 0:
+        print("Generating correlation heatmap...")
         plt.figure(figsize=(10, 8))
         plt.imshow(corr_matrix, cmap='coolwarm', interpolation='nearest')
         plt.colorbar()
@@ -164,6 +178,7 @@ def analyze_csv_with_ai(csv_file_path):
 
     # 5. Prediction Plot (if predictions were made)
     if "sample_predictions" in results["predictions"]:
+        print("Generating prediction plot...")
         plt.figure(figsize=(8, 6))
         actual = [x[0] for x in results["predictions"]["sample_predictions"]]
         predicted = [x[1] for x in results["predictions"]["sample_predictions"]]

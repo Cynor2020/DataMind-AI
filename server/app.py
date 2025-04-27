@@ -7,9 +7,9 @@ import datetime
 import io
 from werkzeug.utils import secure_filename
 from bson.objectid import ObjectId
-import tempfile
-import os 
+import os
 from data_mind_ai_analysis_model import analyze_csv_with_ai
+import numpy as np
 
 app = Flask(__name__)
 bcrypt = Bcrypt(app)
@@ -28,6 +28,22 @@ ALLOWED_EXTENSIONS = {'csv', 'txt', 'pdf'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# Helper function to convert numpy types to Python types
+def convert_numpy_types(obj):
+    if isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, dict):
+        return {k: convert_numpy_types(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_numpy_types(item) for item in obj]
+    elif isinstance(obj, tuple):
+        return tuple(convert_numpy_types(item) for item in obj)
+    return obj
 
 # Register route (unchanged)
 @app.route('/register', methods=['POST'])
@@ -172,7 +188,6 @@ def files_history():
     except Exception as e:
         return jsonify({'message': f'Error: {str(e)}'}), 500
 
-
 @app.route('/current_files', methods=['GET'])
 def current_files():
     try:
@@ -250,37 +265,53 @@ def analyze_file(file_id):
         if file_doc['filetype'] != 'csv':
             return jsonify({'message': 'Only CSV files can be analyzed'}), 400
 
-        with tempfile.NamedTemporaryFile(suffix='.csv', delete=False) as temp_file:
-            temp_file.write(file_doc['data'])
-            temp_csv_path = temp_file.name
+        # Debug: Print type and content of file_doc['data']
+        print("Type of file_doc['data']:", type(file_doc['data']))
+        print("file_doc['data']:", file_doc['data'][:100] if isinstance(file_doc['data'], (str, bytes)) else "Not a string or bytes")
 
-        results = analyze_csv_with_ai(temp_csv_path)
-        os.remove(temp_csv_path)
+        # Pass raw CSV data directly instead of using temporary file
+        csv_data = file_doc['data'].decode('utf-8') if isinstance(file_doc['data'], bytes) else file_doc['data']
+        print("CSV Data:", csv_data[:100])
+
+        # Validate that csv_data is a string, not a dictionary
+        if not isinstance(csv_data, str):
+            return jsonify({'message': 'Invalid data format: Expected raw CSV data, got a dictionary or other type'}), 400
+
+        print("Calling analyze_csv_with_ai...")
+        results = analyze_csv_with_ai(csv_data)
+        print("Results from analyze_csv_with_ai:", results)
 
         if 'error' in results:
             return jsonify({'message': results['error']}), 400
 
+        # Convert numpy types to Python types before storing in MongoDB and returning
+        print("Converting numpy types in results...")
+        converted_results = convert_numpy_types(results)
+
         analysis_doc = {
             'file_id': file_id,
             'email': email,
-            'insights': results['insights'],
-            'predictions': results['predictions'],
-            'plots': results['plots'],
+            'insights': converted_results['insights'],
+            'predictions': converted_results['predictions'],
+            'plots': converted_results['plots'],
             'created_at': datetime.datetime.utcnow()
         }
+        print("Inserting into analysis_collection...")
         analysis_result = analysis_collection.insert_one(analysis_doc)
         analysis_id = str(analysis_result.inserted_id)
 
-        # Convert plot data to base64 image URLs
-        results['plots'] = [f"data:image/png;base64,{plot['data']}" for plot in results['plots']]
+        # Use converted_results for plots conversion and response
+        print("Converting plots to base64 URLs...")
+        converted_results['plots'] = [f"data:image/png;base64,{plot['data']}" for plot in converted_results['plots']]
 
         return jsonify({
             'message': 'Analysis completed successfully',
-            'results': results,
+            'results': converted_results,
             'analysis_id': analysis_id
         }), 200
 
     except Exception as e:
+        print("Error occurred:", str(e))
         return jsonify({'message': f'Error: {str(e)}'}), 500
 
 # CORS middleware (unchanged)

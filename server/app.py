@@ -110,7 +110,7 @@ def dashboard():
 
         return jsonify({
             'username': user.get('username', 'User'),
-            'message': 'Welcome to your dashboard'
+            'message': 'powered by cynor'
         }), 200
     except jwt.ExpiredSignatureError:
         return jsonify({'message': 'Token has expired'}), 401

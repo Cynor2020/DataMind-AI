@@ -1,15 +1,20 @@
+'use client';
+
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import AnalyzeResults from './AnalyzeResults'; // Import the AnalyzeResults component
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 const FilesUpload = () => {
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [isUploaded, setIsUploaded] = useState(false); // Track upload success
+  const [showAnalyzeResults, setShowAnalyzeResults] = useState(false); // Track whether to show AnalyzeResults
   const fileInputRef = useRef(null);
   const router = useRouter();
-  
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -19,9 +24,12 @@ const FilesUpload = () => {
       if (!allowedExtensions.includes(fileExtension)) {
         toast.error('Only CSV, TXT, and PDF files are allowed!');
         setFile(null);
+        setIsUploaded(false); // Reset upload status
         return;
       }
       setFile(selectedFile);
+      setIsUploaded(false); // Reset upload status when a new file is selected
+      setShowAnalyzeResults(false); // Hide AnalyzeResults when a new file is selected
     }
   };
 
@@ -60,6 +68,7 @@ const FilesUpload = () => {
       toast.success(response.data.message);
       setFile(null);
       fileInputRef.current.value = '';
+      setIsUploaded(true); // Set upload status to true after successful upload
     } catch (error) {
       console.error('Upload error:', error.response?.data);
       const errorMessage = error.response?.data?.message || 'File upload failed!';
@@ -74,10 +83,18 @@ const FilesUpload = () => {
     }
   };
 
+  const handleAnalyzeClick = () => {
+    setShowAnalyzeResults(true); // Show AnalyzeResults component
+  };
+
+  // Conditionally render AnalyzeResults or the upload form
+  if (showAnalyzeResults) {
+    return <AnalyzeResults />;
+  }
+
   return (
     <div className="file-upload-container">
       <h1>File Upload Page</h1>
-      
 
       <form onSubmit={handleUpload}>
         <div className="file-input">
@@ -94,8 +111,13 @@ const FilesUpload = () => {
         <button type="submit" disabled={uploading}>
           {uploading ? 'Uploading...' : 'Upload File'}
         </button>
-        
       </form>
+
+      {isUploaded && (
+        <button className="analyze-btn" onClick={handleAnalyzeClick}>
+          Analyze
+        </button>
+      )}
     </div>
   );
 };

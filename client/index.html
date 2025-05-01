@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DataMind-AI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          borderColor: {
+            'neon-blue': '#00ffff', // Custom neon color (cyan)
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    @keyframes slideIn {
+      from { transform: translateX(-100%); }
+      to { transform: translateX(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .animate-slideIn {
+      animation: slideIn 0.3s ease-out;
+    }
+    .animate-fadeIn {
+      animation: fadeIn 0.5s ease-in;
+    }
+  </style>
+</head>
+<body class="bg-white dark:bg-gray-800 text-black dark:text-white">
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+</html>

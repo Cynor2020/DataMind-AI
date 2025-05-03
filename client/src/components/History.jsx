@@ -122,7 +122,10 @@ const History = () => {
   const handleAnalyze = (fileId) => {
     navigate(`/analyze-result?fileId=${fileId}`);
   };
-
+  const handleAnalyzeManual = (fileId) => {
+    navigate(`/analyze_missing_value?fileId=${fileId}`);
+  };
+//     { name: 'Analyze ', path: '/analyze_missing_value', icon: FaHist
   if (loading) {
     return (
       <div className="animate-fadeIn">
@@ -170,7 +173,11 @@ const History = () => {
                     onClick={() => handleAnalyze(file._id)}
                     className="bg-green-500 hover:bg-green-600 text-white py-1 px-2 sm:px-3 rounded text-xs sm:text-sm w-70 sm:w-auto"
                   >
-                    Analyze
+                    Analyze AI
+                  </button >
+                  <button onClick={()=>handleAnalyzeManual(file._id)}
+                    className="bg-green-500 hover:bg-green-600 text-white py-1 px-2 sm:px-3 rounded text-xs sm:text-sm w-70 sm:w-auto">
+                     Analyze
                   </button>
                 </div>
               </li>

@@ -11,7 +11,9 @@ import os
 from data_mind_ai_analysis_model import analyze_csv_with_ai
 import numpy as np
 import base64
-
+import model
+import pandas as pd
+from io import StringIO
 app = Flask(__name__)
 bcrypt = Bcrypt(app)
 CORS(app, resources={
@@ -379,6 +381,43 @@ def current_files():
         print(f"Current files error: {str(e)}")
         return jsonify({'message': f'Error: {str(e)}'}), 500
 
+
+# New endpoint to fetch a specific file by ID
+@app.route('/file/<file_id>', methods=['GET', 'OPTIONS'])
+def get_file(file_id):
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    try:
+        token = request.headers.get('Authorization')
+        if not token:
+            print("No token provided in get_file")
+            return jsonify({'message': 'Token is missing'}), 401
+
+        token = token.split()[1]
+        data = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        email = data['email']
+        print(f"Fetching file for email: {email}, file_id: {file_id}")
+
+        file_doc = files_collection.find_one({'_id': ObjectId(file_id), 'email': email}, {'data': 0})
+        if not file_doc:
+            return jsonify({'message': 'File not found or you do not have access'}), 404
+
+        file_doc['_id'] = str(file_doc['_id'])
+        file_doc['upload_date'] = file_doc['upload_date'].isoformat()
+        print(f"File response: {file_doc}")
+
+        return jsonify({'file': file_doc, 'message': 'File retrieved successfully'}), 200
+    except jwt.ExpiredSignatureError:
+        print("Token expired in get_file")
+        return jsonify({'message': 'Token has expired'}), 401
+    except jwt.InvalidTokenError:
+        print("Invalid token in get_file")
+        return jsonify({'message': 'Invalid token'}), 401
+    except Exception as e:
+        print(f"Get file error: {str(e)}")
+        return jsonify({'message': f'Error: {str(e)}'}), 500
+    
+
 # Analyze route
 @app.route('/analyze/<file_id>', methods=['GET', 'OPTIONS'])
 def analyze_file(file_id):
@@ -444,42 +483,103 @@ def analyze_file(file_id):
     except Exception as e:
         print(f"Analyze error: {str(e)}")
         return jsonify({'message': f'Error: {str(e)}'}), 500
-
-# New endpoint to fetch a specific file by ID
-@app.route('/file/<file_id>', methods=['GET', 'OPTIONS'])
-def get_file(file_id):
+    
+@app.route('/analyze_missing_value/<file_id>', methods=['POST', 'OPTIONS'])
+def analyze_missing_value(file_id):
     if request.method == 'OPTIONS':
         return jsonify({}), 200
+
+    if request.method != 'POST':
+        return jsonify({'message': f'Method {request.method} not allowed'}), 405
+
     try:
+        # Token validation
         token = request.headers.get('Authorization')
         if not token:
-            print("No token provided in get_file")
             return jsonify({'message': 'Token is missing'}), 401
 
-        token = token.split()[1]
-        data = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-        email = data['email']
-        print(f"Fetching file for email: {email}, file_id: {file_id}")
+        try:
+            token = token.replace('Bearer ', '').strip()
+            data = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+            email = data['email']
+        except jwt.InvalidTokenError as e:
+            return jsonify({'message': 'Invalid token'}), 401
 
-        file_doc = files_collection.find_one({'_id': ObjectId(file_id), 'email': email}, {'data': 0})
-        if not file_doc:
-            return jsonify({'message': 'File not found or you do not have access'}), 404
+        # Fetch file from MongoDB
+        try:
+            file_doc = files_collection.find_one({'_id': ObjectId(file_id), 'email': email})
+            if not file_doc:
+                return jsonify({'message': 'File not found or you do not have access'}), 404
+        except Exception as e:
+            return jsonify({'message': 'Invalid file ID format'}), 400
 
-        file_doc['_id'] = str(file_doc['_id'])
-        file_doc['upload_date'] = file_doc['upload_date'].isoformat()
-        print(f"File response: {file_doc}")
+        # Check file type
+        if file_doc['filetype'] != 'csv':
+            return jsonify({'message': 'Only CSV files can be analyzed'}), 400
 
-        return jsonify({'file': file_doc, 'message': 'File retrieved successfully'}), 200
-    except jwt.ExpiredSignatureError:
-        print("Token expired in get_file")
-        return jsonify({'message': 'Token has expired'}), 401
-    except jwt.InvalidTokenError:
-        print("Invalid token in get_file")
-        return jsonify({'message': 'Invalid token'}), 401
+        # Decode CSV data
+        try:
+            csv_data = file_doc['data'].decode('utf-8') if isinstance(file_doc['data'], bytes) else file_doc['data']
+            if not isinstance(csv_data, str):
+                return jsonify({'message': 'Invalid data format: Expected raw CSV data'}), 400
+        except Exception as e:
+            return jsonify({'message': 'Error decoding CSV data'}), 400
+
+        # Read CSV into DataFrame
+        try:
+            df = pd.read_csv(StringIO(csv_data))
+        except Exception as e:
+            return jsonify({'message': f'Error reading CSV: {str(e)}'}), 400
+
+        # Get form data
+        form_data = request.json
+        if not form_data:
+            return jsonify({'message': 'Form data is missing'}), 400
+
+        required_fields = ['column', 'fill_method', 'method', 'value', 'changes', 'type']
+        for field in required_fields:
+            if field not in form_data:
+                return jsonify({'message': f'Missing required field: {field}'}), 400
+
+        column = form_data['column']
+        fill_method = form_data['fill_method']
+        method = form_data['method']
+        value = form_data['value']
+        changes = form_data['changes']
+        type = form_data['type']
+
+        # Validate column
+        if column not in df.columns:
+            return jsonify({'message': f'Column {column} not found in CSV'}), 400
+
+        # Call model.missing_handler
+        try:
+            result = model.missing_handler(
+                df,
+                column=column,
+                Fill_Method=fill_method,
+                value=value,
+                method=method,
+                type=type,
+                changes=changes
+            )
+        except Exception as e:
+            return jsonify({'message': f'Error in analysis: {str(e)}'}), 500
+
+        # Build result dictionary
+        result_dict = {
+            'status': result.get('status', 'unknown'),
+            'affected_rows': int(result.get('affected_rows', 0)) if result.get('affected_rows') else 0,
+            'affected_columns': result.get('affected_columns', 0),
+            'removed_row': result.get('removed_row', 'none'),
+            'removed_column': result.get('removed_column', 'none'),
+            'form_data': form_data
+        }
+
+        return jsonify(result_dict), 200
+
     except Exception as e:
-        print(f"Get file error: {str(e)}")
         return jsonify({'message': f'Error: {str(e)}'}), 500
-
 # CORS middleware
 @app.after_request
 def add_cors_headers(response):
@@ -491,3 +591,13 @@ def add_cors_headers(response):
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
+
+
+
+
+
+
+
+
+
+    # bhai ye mera flask app he isme /second  rout mat add kerna bas  analyze_missing_value route hi correct kerna

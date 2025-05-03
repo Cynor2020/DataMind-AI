@@ -58,7 +58,7 @@ const UploadCSV = () => {
       setFile(null);
       fileInputRef.current.value = '';
       // Redirect to analyze-result page after successful upload
-      navigate('/analyze-result');
+      // navigate('/analyze-result');
     } catch (error) {
       console.error('Upload error:', error.response?.data);
       const errorMessage = error.response?.data?.message || 'File upload failed!';

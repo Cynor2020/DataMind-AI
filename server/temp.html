@@ -1,0 +1,42 @@
+<form method="POST" action="/analyze_missing_value">
+    <label for="column">Row/Column</label>
+    <input type="text" id="column" name="column" placeholder="Enter the row/column" value="colunm">
+
+    <label for="fill_method">Fill Method</label>
+    <select name="fill_method" id="fill_method">
+        <option value="none" >None</option>
+        <option value="mean" >Mean</option>
+        <option value="median" >Median</option>
+        <option value="mode" >Mode</option>
+        <option value="custom" >Custom</option>
+    </select>
+    <label for="method">Method</label>
+    <select name="method" id="method">
+        <option value="none" >None</option>
+        <option value="remove">Remove</option>
+    </select>
+
+    <label for="value">Value</label>
+    <select name="value" id="value">
+        <option value="none">None</option>
+        <option value="custom" >Custom</option>
+        <option value="Unknown">Unknown</option>
+    </select>
+
+    <label for="changes">Changes</label>
+    <select name="changes" id="changes">
+        <option value="none" >None</option>
+        <option value="fix" >Fix</option>
+        <option value="revert" >Revert</option>
+    </select>
+
+    <label for="type">Type</label>
+    <select name="type" id="type">
+        <option value="none">None</option>
+        <option value="row">Row</option>
+        <option value="column">Column</option>
+    </select>
+    <br>
+
+    <button type="submit">Submit</button>
+</form>

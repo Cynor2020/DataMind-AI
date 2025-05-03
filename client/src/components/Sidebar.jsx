@@ -18,7 +18,8 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     { name: 'Dashboard', path: '/dashboard', icon: FaHome },
     { name: 'Upload CSV', path: '/upload', icon: FaUpload },
     { name: 'History', path: '/history', icon: FaHistory },
-    
+    { name: 'Analyze ', path: '/analyze_missing_value', icon: FaHistory },
+    { name: 'Analyze AI ', path: '/analyze-result', icon: FaHistory },
   ];
 
   return (

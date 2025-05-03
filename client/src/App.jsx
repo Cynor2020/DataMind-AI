@@ -10,6 +10,7 @@ import Login from './pages/Login';
 import EditProfile from './pages/EditProfile';
 import Home from './pages/Home';
 import './components/Sidebar.css';
+import AnalyzeManual from './components/AnalyzeManual';
 
 const App = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -94,7 +95,8 @@ const ProtectedRoutes = ({ isDarkMode, toggleDarkMode, isSidebarOpen, toggleSide
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/upload" element={<UploadCSV />} />
             <Route path="/history" element={<History />} />
-            <Route path="/analyze-result" element={<AnalyzeResult />} /> Add this route
+            <Route path="/analyze-result" element={<AnalyzeResult />} /> Add this route 
+            <Route path="/analyze_missing_value" element={<AnalyzeManual />} />
             <Route path="/logout" element={<div>Logging out...</div>} />
             <Route path="*" element={<Navigate to="/dashboard" />} />
           </Routes>

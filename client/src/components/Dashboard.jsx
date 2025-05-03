@@ -7,6 +7,7 @@ import History from './History';
 import AnalyzeResult from './AnalyzeResult'; // Add this import
 import Register from '../pages/Register';
 import Login from '../pages/Login';
+import AnalyzeManual from './AnalyzeManualt'; 
 
 const Dashboard = ({ toggleDarkMode, isDarkMode }) => {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
@@ -37,6 +38,7 @@ const Dashboard = ({ toggleDarkMode, isDarkMode }) => {
             <Route path="/dashboard" element={isAuthenticated() ? <DashboardContent /> : <Navigate to="/login" />} />
             <Route path="/upload" element={isAuthenticated() ? <UploadCSV /> : <Navigate to="/login" />} />
             <Route path="/history" element={isAuthenticated() ? <History /> : <Navigate to="/login" />} />
+            <Route path="/analyze_missing_value" element={isAuthenticated() ? <AnalyzeManual /> : <Navigate to="/login" />} />
             <Route path="/analyze-result" element={isAuthenticated() ? <AnalyzeResult /> : <Navigate to="/login" />} /> {/* Add this route */}
             <Route path="/logout" element={<div>Logging out...</div>} />
           </Routes>
@@ -45,7 +47,6 @@ const Dashboard = ({ toggleDarkMode, isDarkMode }) => {
     </div>
   );
 };
-
 const DashboardContent = () => (
   <div className="animate-fadeIn">
     <h2 className="text-2xl font-bold mb-4 text-black dark:text-white">Dashboard</h2>

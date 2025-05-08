@@ -94,7 +94,9 @@ const History = () => {
       navigate('/login');
       return;
     }
-
+    const lokesh = () =>{
+      alert("Delete Done")
+    }
     const cleanToken = token.startsWith('Bearer ') ? token.replace('Bearer ', '') : token;
 
     try {
@@ -163,8 +165,11 @@ const History = () => {
                   >
                     Download
                   </button>
+
                   <button
-                    onClick={() => handleDelete(file._id, file.filename)}
+                    onClick={() => 
+                      handleDelete(file._id, file.filename)
+                    }
                     className="bg-red-500 hover:bg-red-600 text-white py-1 px-2 sm:px-3 rounded text-xs sm:text-sm w-70 sm:w-auto"
                   >
                     Delete

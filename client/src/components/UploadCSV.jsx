@@ -2,12 +2,15 @@ import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import { FaHistory } from 'react-icons/fa';
 
 const API_URL = 'http://localhost:5000';
 
 const UploadCSV = () => {
   const [file, setFile] = useState(null);
+  const [uploadedFile, setUploadedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
@@ -22,6 +25,7 @@ const UploadCSV = () => {
         return;
       }
       setFile(selectedFile);
+      setUploadSuccess(false); // Reset upload success when a new file is selected
     }
   };
 
@@ -55,10 +59,10 @@ const UploadCSV = () => {
         },
       });
       toast.success(response.data.message);
+      setUploadedFile(file); // Store the uploaded file
       setFile(null);
       fileInputRef.current.value = '';
-      // Redirect to analyze-result page after successful upload
-      // navigate('/analyze-result');
+      setUploadSuccess(true); // Mark upload as successful
     } catch (error) {
       console.error('Upload error:', error.response?.data);
       const errorMessage = error.response?.data?.message || 'File upload failed!';
@@ -70,6 +74,18 @@ const UploadCSV = () => {
       }
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleAnalyze = () => {
+    if (uploadedFile) {
+      navigate('/analyze_missing_value', { state: { file: uploadedFile } }, alert("Manual Now"));
+    }
+  };
+
+  const handleAnalyzeWithAI = () => {
+    if (uploadedFile) {
+      navigate('/analyze-result', { state: { file: uploadedFile } });
     }
   };
 
@@ -100,6 +116,29 @@ const UploadCSV = () => {
             {uploading ? 'Uploading...' : 'Upload File'}
           </button>
         </form>
+
+        {uploadSuccess && (
+          <div className="mt-5">
+            <button
+              type="button"
+              onClick={handleAnalyze}
+              disabled={uploading}
+              className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded disabled:bg-gray-400 mr-2"
+            >
+              <FaHistory className="inline mr-1" />
+              {uploading ? 'Analyze...' : 'Analyze'}
+            </button>
+            <button
+              type="button"
+              onClick={handleAnalyzeWithAI}
+              disabled={uploading}
+              className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded disabled:bg-gray-400"
+            >
+              <FaHistory className="inline mr-1" />
+              {uploading ? 'Analyze With AI...' : 'Analyze With AI'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

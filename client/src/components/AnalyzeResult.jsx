@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import { jsPDF } from 'jspdf';
 
 const API_URL = import.meta.env.VITE_REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -97,6 +98,73 @@ const AnalyzeResult = () => {
     }
   };
 
+  const downloadReport = async () => {
+    if (!analysisResults?.plots || !Array.isArray(analysisResults.plots) || analysisResults.plots.length === 0) {
+      toast.error('No plots available to download!');
+      return;
+    }
+
+    const pdf = new jsPDF();
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 10;
+    const maxImgWidth = pageWidth - 2 * margin;
+    const maxImgHeight = pageHeight - 2 * margin;
+
+    for (let i = 0; i < analysisResults.plots.length; i++) {
+      try {
+        // Fetch the image
+        const imgUrl = analysisResults.plots[i];
+        const response = await fetch(imgUrl);
+        const blob = await response.blob();
+        const imgData = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+
+        // Get image dimensions
+        const img = new Image();
+        img.src = imgData;
+        await new Promise((resolve) => {
+          img.onload = resolve;
+        });
+        const imgWidth = img.width;
+        const imgHeight = img.height;
+
+        // Calculate scaled dimensions
+        let scaledWidth = imgWidth;
+        let scaledHeight = imgHeight;
+        if (scaledWidth > maxImgWidth) {
+          scaledWidth = maxImgWidth;
+          scaledHeight = (imgHeight * maxImgWidth) / imgWidth;
+        }
+        if (scaledHeight > maxImgHeight) {
+          scaledHeight = maxImgHeight;
+          scaledWidth = (imgWidth * maxImgHeight) / imgHeight;
+        }
+
+        // Center the image
+        const x = (pageWidth - scaledWidth) / 2;
+        const y = (pageHeight - scaledHeight) / 2;
+
+        // Add image to PDF
+        if (i > 0) pdf.addPage();
+        pdf.addImage(imgData, 'PNG', x, y, scaledWidth, scaledHeight);
+
+        // Add a title or label
+        pdf.setFontSize(12);
+        pdf.text(`Plot ${i + 1}`, margin, margin);
+      } catch (error) {
+        console.error(`Failed to process plot ${i + 1}:`, error);
+        toast.error(`Failed to include plot ${i + 1} in the PDF.`);
+      }
+    }
+
+    // Save the PDF
+    pdf.save('DataMind-AI Analysis_Report.pdf');
+  };
+
   if (loading) {
     console.log('Rendering loading state');
     return (
@@ -187,6 +255,17 @@ const AnalyzeResult = () => {
                 <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm text-center">No plots available.</p>
               )}
             </div>
+            {/* Download Report Button */}
+            {Array.isArray(analysisResults.plots) && analysisResults.plots.length > 0 && (
+              <div className="mt-6 text-center">
+                <button
+                  onClick={downloadReport}
+                  className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded text-sm sm:text-base"
+                >
+                  Download Report
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

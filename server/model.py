@@ -1186,7 +1186,7 @@ def share_insights(insights, trends, summary):
         result_dict['status'] = 'error'
         result_dict['message'] = f'Unexpected error: {str(e)}'
         return result_dict
-    
+
 
 
 # def save_analysis(dataset_id, insights, trends, summary):

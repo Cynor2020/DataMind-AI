@@ -36,7 +36,8 @@ db = client['datamind']
 users_collection = db['users']
 files_collection = db['user_files']
 analysis_collection = db['analysis_results']
-
+analysis_results_collection = db['manual_analysis_results']
+result_collection = db['result_df']
 # Secret Key for JWT
 SECRET_KEY = 'your-secret-key'
 ALLOWED_EXTENSIONS = {'csv', 'txt', 'pdf', 'png', 'jpg', 'jpeg'}
@@ -486,9 +487,11 @@ def analyze_file(file_id):
     
 @app.route('/analyze_missing_value/<file_id>', methods=['POST', 'OPTIONS'])
 def analyze_missing_value(file_id):
+    # Handle CORS preflight request
     if request.method == 'OPTIONS':
         return jsonify({}), 200
 
+    # Allow only POST requests
     if request.method != 'POST':
         return jsonify({'message': f'Method {request.method} not allowed'}), 405
 
@@ -505,7 +508,7 @@ def analyze_missing_value(file_id):
         except jwt.InvalidTokenError as e:
             return jsonify({'message': 'Invalid token'}), 401
 
-        # Fetch file from MongoDB
+        # Fetch file metadata from files_collection (just to validate existence)
         try:
             file_doc = files_collection.find_one({'_id': ObjectId(file_id), 'email': email})
             if not file_doc:
@@ -516,8 +519,6 @@ def analyze_missing_value(file_id):
         # Check file type
         if file_doc['filetype'] != 'csv':
             return jsonify({'message': 'Only CSV files can be analyzed'}), 400
-
-        # Decode CSV data
         try:
             csv_data = file_doc['data'].decode('utf-8') if isinstance(file_doc['data'], bytes) else file_doc['data']
             if not isinstance(csv_data, str):
@@ -528,58 +529,376 @@ def analyze_missing_value(file_id):
         # Read CSV into DataFrame
         try:
             df = pd.read_csv(StringIO(csv_data))
+            df_dict = df.to_dict('records')
         except Exception as e:
             return jsonify({'message': f'Error reading CSV: {str(e)}'}), 400
+        
+        # result_collection.insert_one({
+        #     'file_id': ObjectId(file_id),
+        #     'email': email,
+        #     'result_df': df_dict,
+        #     'created_at': datetime.datetime.utcnow()
+        # })
+        # Fetch DataFrame and history from result_collection
+        file = result_collection.find_one({"file_id": ObjectId(file_id), "email": email})
+        if not file:
+         result_collection.insert_one({
+            'file_id': ObjectId(file_id),
+            'email': email,
+            'result_df': df_dict,
+            'created_at': datetime.datetime.utcnow()
+         }) 
+        if not file:
+            return jsonify({'message': 'DataFrame not found. Please upload the file again.'}), 404
+
+        # Load the DataFrame
+        df = pd.DataFrame(file["result_df"])
+        history = file.get("history", [])  # Fetch history list, default to empty if not present
 
         # Get form data
         form_data = request.json
         if not form_data:
             return jsonify({'message': 'Form data is missing'}), 400
 
-        required_fields = ['column', 'fill_method', 'method', 'value', 'changes', 'type']
+        # Validate required fields
+        required_fields = ['column', 'fill_method', 'method', 'value', 'changes', 'type','action','outlier_method','standardize_to','rule','list_columns','list_row']
         for field in required_fields:
             if field not in form_data:
                 return jsonify({'message': f'Missing required field: {field}'}), 400
 
+        action = form_data['action']
         column = form_data['column']
         fill_method = form_data['fill_method']
         method = form_data['method']
+        outlier_method = form_data['outlier_method']
         value = form_data['value']
         changes = form_data['changes']
-        type = form_data['type']
+        typee = form_data['type']
+        target_type = form_data['target_type']
+        standardize_to= form_data['standardize_to']
+        rule = form_data['rule']
+        list_columns = form_data['list_columns']
+        list_row = form_data['list_row']
 
-        # Validate column
-        if column not in df.columns:
-            return jsonify({'message': f'Column {column} not found in CSV'}), 400
-
-        # Call model.missing_handler
-        try:
-            result = model.missing_handler(
-                df,
-                column=column,
-                Fill_Method=fill_method,
-                value=value,
-                method=method,
-                type=type,
-                changes=changes
+        # Handle revert
+        if changes == "revert":
+            result_collection.update_one(
+                {"file_id": ObjectId(file_id), "email": email},
+                {"$set": {
+                    "result_df": df.to_dict('records'),
+                    "history": history
+                }}
             )
+            if not history:
+                return jsonify({'message': 'No more changes to revert'}), 400
+
+            # Pop the latest change from history
+            last_change = history.pop()
+            operation = last_change.get("operation")
+
+            # Undo the operation
+            if operation == "delete_column":
+                deleted_column = last_change.get("column")
+                deleted_data = last_change.get("data")
+                # Reconstruct the column and add it back to DataFrame
+                column_data = pd.Series([row.get(deleted_column) for row in deleted_data], index=df.index)
+                df[deleted_column] = column_data
+
+            elif operation == "fill_missing":
+                affected_column = last_change.get("column")
+                old_values = last_change.get("old_values", [])
+                # Revert filled values to their original (null) state
+                for entry in old_values:
+                    idx = entry.get("index")
+                    df.at[idx, affected_column] = None
+
+            # Update result_collection with the reverted DataFrame and history
+
+            result_dict = {
+                'status': 'success',
+                'message': 'Changes reverted successfully',
+                'affected_rows': 0,
+                'affected_columns': 0,
+                'removed_row': 'none',
+                'removed_column': 'none',
+                'form_data': form_data
+            }
+            return jsonify(result_dict), 200
+
+        # Validate column for normal operations
+        if column not in df.columns:
+            return jsonify({
+                'message': f'Column {column} not found in current DataFrame. It might have been deleted.'
+            }), 400
+
+        # Call model.missing_handler with the updated DataFrame
+        try:
+            # Prepare change entry for history before performing the operation
+            change_entry = {}
+            if method == "remove" and typee == "column":
+                # Store the column data before deleting
+                change_entry = {
+                    "operation": "delete_column",
+                    "column": column,
+                    "data": df[[column]].to_dict('records')
+                }
+            elif fill_method != "none":
+                # Store the original (null) values before filling
+                null_indices = df[df[column].isna()].index.tolist()
+                old_values = [{"index": idx, "value": None} for idx in null_indices]
+                change_entry = {
+                    "operation": "fill_missing",
+                    "column": column,
+                    "method": fill_method,
+                    "old_values": old_values
+                }
+
+            # Call missing_handler
+            if action == 'handel_missing_values':
+
+                result = model.missing_handler(
+                    df,
+                    column=column,
+                    Fill_Method=fill_method,
+                    value=value,
+                    method=method,
+                    type=typee
+                )
+                result_df = result.get('flagged_df')
+                if result_df is None:
+                    return jsonify({'message': 'Analysis failed: flagged_df not returned'}), 500
+    
+                # Handle NaN values before saving to MongoDB
+                result_df = result_df.where(pd.notnull(result_df), None)
+    
+                # Update history if there was a change
+                if change_entry:
+                    history.append(change_entry)
+    
+                # Update result_collection with the new result_df and history
+                result_collection.update_one(
+                    {"file_id": ObjectId(file_id), "email": email},
+                    {"$set": {
+                        "result_df": result_df.to_dict('records'),
+                        "history": history
+                    }}
+                )
+                result_dict = {
+                     'status': result.get('status', 'unknown'),
+                     'affected_rows': int(result.get('affected_rows', 0)) if result.get('affected_rows') else 0,
+                     'affected_columns': result.get('affected_columns', 0),
+                     'removed_row': result.get('removed_row', 'none'),
+                     'removed_column': result.get('removed_column', 'none'),
+                     'form_data': form_data
+                    }
+
+                return jsonify(result_dict), 200
+                
+            if action == 'remove_duplicates':
+                try:
+                    result = model.remove_duplicates(df,column=column,typee=typee) 
+                except Exception as e:
+                    return jsonify({'message': f'Error in analysis: {str(e)}'}), 500 
+                result_df = result.get('flagged_df')
+                if result_df is None:
+                    return jsonify({'message': 'Analysis failed: flagged_df not returned'}), 500
+    
+                # Handle NaN values before saving to MongoDB
+                result_df = result_df.where(pd.notnull(result_df), None)
+    
+                # Update history if there was a change
+                if change_entry:
+                    history.append(change_entry)
+    
+                # Update result_collection with the new result_df and history
+                result_collection.update_one(
+                    {"file_id": ObjectId(file_id), "email": email},
+                    {"$set": {
+                        "result_df": result_df.to_dict('records'),
+                        "history": history
+                    }}
+                )
+                result_dict = {
+                       'status': result.get('status', ['unknown'])[0] if isinstance(result.get('status'), list) else result.get('status', 'unknown'),
+                       'message': result.get('message', ['none'])[0] if isinstance(result.get('message'), list) else result.get('message', 'none'),
+                       'error': str(result.get('error', 'none'))
+                    }                   
+                return jsonify(result_dict), 200
+
+
+            if action == 'outlier':
+                try:
+                    result = model.out_lier(df,column=column,fill_method=fill_method,method=outlier_method) 
+                except Exception as e:
+                    return jsonify({'message': f'Error in analysis: {str(e)}'}), 500 
+                result_df = result.get('flagged_df')
+                if result_df is None:
+                    return jsonify({'message': 'Analysis failed: flagged_df not returned'}), 500
+    
+                # Handle NaN values before saving to MongoDB
+                result_df = result_df.where(pd.notnull(result_df), None)
+    
+                # Update history if there was a change
+                if change_entry:
+                    history.append(change_entry)
+    
+                # Update result_collection with the new result_df and history
+                result_collection.update_one(
+                    {"file_id": ObjectId(file_id), "email": email},
+                    {"$set": {
+                        "result_df": result_df.to_dict('records'),
+                        "history": history
+                    }}
+                )
+    
+                result_dict = {
+                        'status': result.get('status', 'unknown'),
+                        'message': result.get('message', 'none'),
+                        'outliers': result.get('outliers', []).tolist(),
+                        'z_scores': result.get('z_scores', []).tolist() if result.get('z_scores') is not None else None,
+                        'stats': result.get('stats', {}),
+                        'outlier_indices': result.get('outlier_indices', [])
+                    }
+
+                return jsonify(result_dict), 200
+                
+            if action == 'fix_datatypes':
+                try:
+                    result = model.fix_datatypes(df,column=column,target_type = target_type) 
+                except Exception as e:
+                    return jsonify({'message': f'Error in analysis: {str(e)}'}), 500 
+                result_df = result.get('flagged_df')
+                if result_df is None:
+                    return jsonify({'message': 'Analysis failed: flagged_df not returned'}), 500
+    
+                # Handle NaN values before saving to MongoDB
+                result_df = result_df.where(pd.notnull(result_df), None)
+    
+                # Update history if there was a change
+                if change_entry:
+                    history.append(change_entry)
+    
+                # Update result_collection with the new result_df and history
+                result_collection.update_one(
+                    {"file_id": ObjectId(file_id), "email": email},
+                    {"$set": {
+                        "result_df": result_df.to_dict('records'),
+                        "history": history
+                    }}
+                )
+                result_dict = {
+                        'status': result.get('status', 'unknown'),
+                        'message': result.get('message', 'none'),
+                        'error': str(result.get('error', 'none'))
+                    }
+                return jsonify(result_dict), 200
+            if action == 'correct_data':
+                    try:
+                         result = model.correct_data(df,column=column,standardize_to= standardize_to) 
+                    except Exception as e:
+                            return jsonify({'message': f'Error in analysis: {str(e)}'}), 500 
+                    result_df = result.get('flagged_df')
+                    if result_df is None:
+                      return jsonify({'message': 'Analysis failed: flagged_df not returned'}), 500
+    
+                # Handle NaN values before saving to MongoDB
+                    result_df = result_df.where(pd.notnull(result_df), None)
+        
+                    # Update history if there was a change
+                    if change_entry:
+                        history.append(change_entry)
+        
+                    # Update result_collection with the new result_df and history
+                    result_collection.update_one(
+                        {"file_id": ObjectId(file_id), "email": email},
+                        {"$set": {
+                            "result_df": result_df.to_dict('records'),
+                            "history": history
+                        }}
+                    )
+                    result_dict = {
+                                  'status': result.get('status', 'unknown'),
+                                  'message': result.get('message', 'none'),
+                                  'error': str(result.get('error', 'none'))
+                                }
+                    return jsonify(result_dict), 200
+
+            if action == 'standardize_data':
+                try:
+                    result = model.standardize_data(df,column=column,rule=rule) 
+                except Exception as e:
+                    return jsonify({'message': f'Error in analysis: {str(e)}'}), 500 
+                result_df = result.get('flagged_df')
+                if result_df is None:
+                    return jsonify({'message': 'Analysis failed: flagged_df not returned'}), 500
+    
+                # Handle NaN values before saving to MongoDB
+                result_df = result_df.where(pd.notnull(result_df), None)
+    
+                # Update history if there was a change
+                if change_entry:
+                    history.append(change_entry)
+    
+                # Update result_collection with the new result_df and history
+                result_collection.update_one(
+                    {"file_id": ObjectId(file_id), "email": email},
+                    {"$set": {
+                        "result_df": result_df.to_dict('records'),
+                        "history": history
+                    }}
+                )
+                result_dict = {
+                        'status': result.get('status', 'unknown'),
+                        'message': result.get('message', 'none'),
+                        'error': str(result.get('error', 'none'))
+                    }
+                return jsonify(result_dict), 200
+
+            if action == 'remove_data':
+                try:
+                    result = model.remove_data(df,list_columns=list_columns,list_row=list_row) 
+                except Exception as e:
+                    return jsonify({'message': f'Error in analysis: {str(e)}'}), 500 
+                
+
+                result_df = result.get('flagged_df')
+                if result_df is None:
+                    return jsonify({'message': 'Analysis failed: flagged_df not returned'}), 500
+    
+                # Handle NaN values before saving to MongoDB
+                result_df = result_df.where(pd.notnull(result_df), None)
+    
+                # Update history if there was a change
+                if change_entry:
+                    history.append(change_entry)
+    
+                # Update result_collection with the new result_df and history
+                result_collection.update_one(
+                    {"file_id": ObjectId(file_id), "email": email},
+                    {"$set": {
+                        "result_df": result_df.to_dict('records'),
+                        "history": history
+                    }}
+                )
+                result_dict = {
+                            'status': result.get('status', 'unknown'),
+                            'removed_columns': result.get('removed_columns', 'none'),
+                            'removed_rowes': result.get('removed_rowes', 'none'),
+                            'message': result.get('message', 'none'),
+                            'error': str(result.get('error', 'none'))
+                        }
+                return jsonify(result_dict), 200
+            
+
+            # Extract flagged_df from result
+
         except Exception as e:
             return jsonify({'message': f'Error in analysis: {str(e)}'}), 500
 
         # Build result dictionary
-        result_dict = {
-            'status': result.get('status', 'unknown'),
-            'affected_rows': int(result.get('affected_rows', 0)) if result.get('affected_rows') else 0,
-            'affected_columns': result.get('affected_columns', 0),
-            'removed_row': result.get('removed_row', 'none'),
-            'removed_column': result.get('removed_column', 'none'),
-            'form_data': form_data
-        }
-
-        return jsonify(result_dict), 200
-
     except Exception as e:
         return jsonify({'message': f'Error: {str(e)}'}), 500
+
 # CORS middleware
 @app.after_request
 def add_cors_headers(response):
@@ -592,12 +911,3 @@ def add_cors_headers(response):
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
 
-
-
-
-
-
-
-
-
-    # bhai ye mera flask app he isme /second  rout mat add kerna bas  analyze_missing_value route hi correct kerna

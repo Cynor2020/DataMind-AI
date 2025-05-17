@@ -1,0 +1,6 @@
+{
+    "code-runner.executorMap": {
+        "python": "/home/dark/DataMind-AI-Backup/.venv/bin/python3.13"
+    },
+    "code-runner.runInTerminal": true
+}

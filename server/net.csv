@@ -1,0 +1,7 @@
+Region,Sales,Date,Category,Weight
+North,5000,2023-01-01,Laptop,14
+South,4500,,Phone,12
+East,345,2023-01-03,Tablet,45
+West,5000,,Laptop,86
+North,4578,2023-01-05,Phone,65
+South,5000,2023-01-06,,64

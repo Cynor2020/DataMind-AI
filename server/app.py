@@ -548,8 +548,8 @@ def analyze_missing_value(file_id):
             'result_df': df_dict,
             'created_at': datetime.datetime.utcnow()
          }) 
-        if not file:
-            return jsonify({'message': 'DataFrame not found. Please upload the file again.'}), 404
+        # if not file:
+        #     return jsonify({'message': 'DataFrame not found. Please upload the file again.'}), 404
 
         # Load the DataFrame
         df = pd.DataFrame(file["result_df"])
@@ -888,16 +888,44 @@ def analyze_missing_value(file_id):
                             'error': str(result.get('error', 'none'))
                         }
                 return jsonify(result_dict), 200
-            
+            if action == 'summary_data':
+                result = model.summary_csv(
+                    df
+                )
+                stats_df = result["Stats"]
+                result_dict = {
+                         "status": result["status"],
+                         "message": result["message"],
+                         "Rows": result["Rows"],
+                         "Columns": result["Columns"],
+                         "Datatype": result["Datatype"].astype(str).to_dict(),
+                         "Numarical_columns": result["Numarical_columns"].tolist(),
+                         "Categorical_columns": result["Categorical_columns"].tolist(),
+                         "Missing_Values": result["Missing_Values"].to_dict(),
+                        }
+                result_collection.update_one(
+                    {"file_id": ObjectId(file_id), "email": email},
+                    {"$set": {
+                        "stats_df": stats_df.to_dict(),
+                        "result": result_dict
+                    }}
+                )
 
-            # Extract flagged_df from result
+                return jsonify(result_dict), 200
+
 
         except Exception as e:
+            
             return jsonify({'message': f'Error in analysis: {str(e)}'}), 500
 
         # Build result dictionary
     except Exception as e:
+        
         return jsonify({'message': f'Error: {str(e)}'}), 500
+
+
+
+
 
 # CORS middleware
 @app.after_request
